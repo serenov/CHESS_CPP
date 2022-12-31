@@ -1,9 +1,13 @@
 #include<iostream>
+#include <chrono>
+#include <unistd.h>
+ 
 enum flag {
     PromotionToQ,
     PromotionToR,
     PromotionToB,
     PromotionToN,
+    EnpassantFlag,
     Skip,
     None
 };
@@ -16,7 +20,7 @@ private:
     uint64_t black = 0;
     uint64_t EntireBoard = 0;
     bool IsMoved[6]; // for castling purposes i.e, is king moved?, is rook moved?
-    uint64_t Castling[4];
+    uint64_t Castling[4] = {};
     uint64_t Enpassant;
 
 public:
@@ -25,6 +29,7 @@ public:
     void LoadFEN(const char fen[]);
     void UpdateBoardState();
     uint64_t GenerateMoves();
+    int getPiece(uint64_t pos, char turn);
     void MakeMove(char PieceID, uint64_t Position, uint64_t Destination, flag f = None);
     void DisplayBoard();
     void Interface(const char Move[]);
