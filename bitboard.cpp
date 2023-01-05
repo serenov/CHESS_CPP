@@ -1,4 +1,7 @@
 #include "bitboard.hpp"
+#define NOT_FILE_A 18374403900871474942ul
+#define NOT_FILE_H 18374403900871474942ul
+#define RANK_2_7 71776119061282560ul
 
 void Clear()
 {
@@ -41,7 +44,7 @@ int map(const char a){
 }
 
 bitboard::bitboard(){
-    const char fen[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; 
+    char fen[] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     LoadFEN(fen);
 }
 
@@ -64,9 +67,9 @@ void bitboard::LoadFEN(const char fen[]){
         }
         else Index -= 16;
     }
-    std::cout << (uint64_t) (((1l << 62) | (1l << 63) | (1l << 60))) << std::endl;
-    std::cout << fen[i + 3]<< std::endl;
-    i += 3;
+    i++;
+    if(fen[i] == 'b') WhiteToPlay = false;
+    i += 2;
     while(fen[i] != ' '){
         switch (fen[i])
         {
@@ -88,17 +91,15 @@ void bitboard::LoadFEN(const char fen[]){
         i++;
     }
     UpdateBoardState();
-    std:: cout << fen[i + 1] << std::endl;
     i++;
     if(fen[i] != '-'){
         int a = (fen[i + 1] - '1') * 8 + (fen[i] - 'a');
         std::cout << (fen[i + 1] - '1')<< std::endl;
+        std::cout << (fen[i] - 'a')<< std::endl;
         std::cout << a << std::endl;
         Enpassant = 1ul << a;
     }
-    DisplayBoard();
-    for(int i = 0; i < 4; i++) bit_display(Castling[i]); 
-    std::cout << "Enpassant is : " << Enpassant << std::endl;
+    else Enpassant = 0;
 }
 
 uint64_t bitboard::GenerateMoves(uint64_t pos, char PieceID, int x, int y){
@@ -121,13 +122,15 @@ uint64_t bitboard::GenerateMoves(uint64_t pos, char PieceID, int x, int y){
         ResultantMoves &= KnightMoves[8 * y + x];
         break;
     case 5:
-        ResultantMoves &= 0UL;
+        ResultantMoves = PawnMoves(x, y);
         break;
     }
     return ResultantMoves;
 }
 
 void bitboard::UpdateBoardState(){
+    white = 0;
+    black = 0;
     for(int i = 0; i < 6; i++){
         white |= board[i];
         black |= board[6 + i];
@@ -136,31 +139,6 @@ void bitboard::UpdateBoardState(){
     Enpassant = 0;
 }
 
-// void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, const char){
-
-//     char Offset = (PieceID > 5)? 3: 0;
-//     if(notMoved[Offset]){
-//         if(PieceID == Offset * 2){
-//             if((Position | Destination) & 1L){
-//                 if(Position > Destination)
-//                     MakeMove(2 * Offset + 2, Destination << 1, Destination >> 1);
-//                 else
-//                     MakeMove(2 * Offset + 2, Destination >> 2, Destination << 1);
-//             };
-//             notMoved[Offset] = false;
-//         }
-//         if(PieceID == Offset * 2 + 2){
-//             if(Position & 1L) notMoved[Offset + 2] = false;
-//             else notMoved[Offset + 1] = false;
-//         }
-//     }
-//     if(PieceID == Offset * 2 + 5){
-//         if();
-//     }
-//     board[PieceID] &= !Position;
-//     board[PieceID] |= Destination;
-// }
-  
 void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, flag f){
     char Blackturn = (PieceID > 5)? 1: 0;
 
@@ -208,17 +186,23 @@ void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, f
             break;
 
         case EnpassantFlag:
-            board[Blackturn * 6 + 5] &= (Blackturn)? ~(Enpassant << 8): ~(Enpassant >> 8);
+            board[!Blackturn * 6 + 5] &= (Blackturn)? ~(Enpassant << 8): ~(Enpassant >> 8);
             break;
 
         }
     }
+
     if(Destination & EntireBoard){
         // Capture move
         board[getPieceID(Destination, (Blackturn)? 0: 6)] &= ~Destination;
     }
     board[PieceID] |= Destination;
     UpdateBoardState();
+    if(PieceID % 6 == 5 && Position & RANK_2_7){
+        if((Position >> 16)  & Destination) Enpassant = Position >> 8;
+        else if((Position << 16) & Destination) Enpassant = Position << 8;
+    }
+    else Enpassant = 0;
 }
 
 void bitboard::DisplayBoard(uint64_t MovesGenerated){
@@ -298,7 +282,11 @@ bool bitboard::Interface(const char Move[], bool WhiteTurn){
                 default:
                     std::cout << "Taking default value.\n";
                 }
-            }           
+            }  
+            else if (DestinationMask & Enpassant){
+                // Enpassant Move
+                 f = EnpassantFlag;         
+            }
         }
     }
     else{
@@ -345,7 +333,6 @@ uint64_t bitboard::RookMoves(int x, int y){
         if(EntireBoard & poskey) break;
         poskey >>= 1;
     }
-    // bit_display(GeneratedMoves);
     return GeneratedMoves;
 }
 uint64_t bitboard::BishopMoves(int x, int y){
@@ -370,17 +357,17 @@ uint64_t bitboard::BishopMoves(int x, int y){
         poskey >>= 9;
     }
     
-    size = 7 - x - y;
+    size = (7 - x) + y;
     size = (size < 0)? 8 + size: 8 - size;
     currentpos = ((7 - x) < (y))? 7 - x: y;
 
     poskey = 1ul << (y * 8 + x + 7);
-
     for(int i = currentpos + 1; i < size; i++){
         GeneratedMoves |= poskey;
-        if(EntireBoard & poskey) break;
+        if(EntireBoard & poskey)break;
         poskey <<= 7;
     }
+    bit_display(GeneratedMoves);
 
     poskey = 1ul << (y * 8 + x - 7);
 
@@ -392,33 +379,56 @@ uint64_t bitboard::BishopMoves(int x, int y){
     bit_display(GeneratedMoves);
     return GeneratedMoves;
 }
-int main(){
-    bitboard b("8/8/2b5/8/2B5/8/8/RNBQK2R w KQ h8 1 8");
-    //bitboard b;
-    //b.MakeMove(10, 1, 1ul << 12);
-    bool IsWhite = true;
+uint64_t bitboard::PawnMoves(int x, int y){
+
+    uint64_t poskey = 1ul << 8 * y + x;
+    uint64_t temp = 0;
+
+    int offset = (board[5] & poskey)?  1: -1;
+    uint64_t GeneratedMoves = 0;
+
+    temp = (offset == -1)? poskey >> 8:poskey << 8;
+
+    if(temp & ~(EntireBoard)){
+        GeneratedMoves |= temp;
+        if(RANK_2_7 & poskey){
+            GeneratedMoves |= (offset == -1)? temp >> 8: temp << 8;
+            GeneratedMoves &= ~EntireBoard;
+        }
+    }
+
+    if(NOT_FILE_A & poskey)temp = (offset == -1)? poskey >> 9: poskey << 7;
+    if(NOT_FILE_H & poskey)temp |= (offset == -1)? poskey >> 7: poskey << 9;
+    poskey = (offset == -1)? white: black;
+    bit_display(temp);
+    bit_display(poskey);
+
+    GeneratedMoves |= poskey & temp;
+
+    if(temp & Enpassant) GeneratedMoves |= Enpassant;
+
+    return GeneratedMoves;
+}
+
+void bitboard::game(){
     char Move[5]; // mandatorily sized
-    b.DisplayBoard ();
-    while(!b.TheEnd()){
+    DisplayBoard ();
+    while(!TheEnd()){
         for(int i = 0; ; i++){
             std::cin.get(Move[i % 5]);
             if(Move[i % 5] == 10) break;
         }
-        if(b.Interface(Move, IsWhite)){
-            IsWhite = !IsWhite;
-            b.DisplayBoard();
+        if(Interface(Move, WhiteToPlay)){
+            WhiteToPlay = !WhiteToPlay;
+            DisplayBoard();
         }
-    }
-    // uint64_t t = 9331882296111890943ul;
-    // for(int i = 1; i < 8; i++){
-    //     t |=  (1ul << 56) << i;
-    // }
-    // bit_display(t);
-    // std::cout << t << std::endl;
-    // King::Generate();
-    //  for(int i = 0; i < 64; i++) bit_display(King::Moves[i]);
-    // std::cout << (uint64_t)-6854478632857894912L;
-    
+    }   
 
+}
+
+
+int main(){
+    bitboard b;
+    b.game();
     return 0;
 }

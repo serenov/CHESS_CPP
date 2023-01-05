@@ -20,11 +20,12 @@ private:
     uint64_t EntireBoard = 0;
     uint64_t Castling[4] = {};
     uint64_t Enpassant;
+    bool WhiteToPlay = true;
 
 
 public:
-    bitboard();
     bitboard(const char fen[]);
+    bitboard();
     void LoadFEN(const char fen[]); // Only legal fen strings are allowed. Game glitches otherwise.
     void UpdateBoardState();
     uint64_t GenerateMoves(uint64_t pos, char PieceID, int x, int y);
@@ -35,6 +36,8 @@ public:
     bool Interface(const char Move[], bool WhiteTurn);
     uint64_t RookMoves(int x, int y);
     uint64_t BishopMoves(int x, int y);
+    uint64_t PawnMoves(int x, int y);
+    void game();
 
     const char Symbols[13] = 
     {'K', 'Q', 'R', 'B', 'N', 'P',
