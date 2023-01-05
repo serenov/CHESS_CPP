@@ -108,6 +108,8 @@ uint64_t bitboard::GenerateMoves(uint64_t pos, char PieceID, int x, int y){
     {
     case 0:
         ResultantMoves &= KingMoves[8 * y + x];
+        if(Castling[(PieceID/6) * 2]) ResultantMoves |= 1ul << y * 8 + x - 2;
+        if(Castling[(PieceID/6) * 2 + 1]) ResultantMoves |= 1ul << y * 8 + x + 2;
         break;
     case 1:
         ResultantMoves &= RookMoves(x, y) | BishopMoves(x, y);
@@ -194,7 +196,16 @@ void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, f
 
     if(Destination & EntireBoard){
         // Capture move
-        board[getPieceID(Destination, (Blackturn)? 0: 6)] &= ~Destination;
+        char CapturedPID = getPieceID(Destination, (Blackturn)? 0: 6);
+        board[CapturedPID] &= ~Destination;
+        if(CapturedPID % 6 == 2){
+            if(Destination & 0x8100000000000081){
+                if(Castling[(!Blackturn) * 2] & Destination)
+                Castling[!Blackturn * 2] = 0;
+                else if(Castling[(!Blackturn) * 2 + 1] & Destination)
+                Castling[(!Blackturn) * 2 + 1] = 0;
+            }
+        }
     }
     board[PieceID] |= Destination;
     UpdateBoardState();
@@ -428,7 +439,8 @@ void bitboard::game(){
 
 
 int main(){
-    bitboard b;
+    // bitboard b;
+    bitboard b("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Qnp/PPPBBPPP/R3K2R w KQkq -");
     b.game();
     return 0;
 }
