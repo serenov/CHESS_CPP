@@ -36,8 +36,9 @@ public:
     bool Interface(const char Move[], bool WhiteTurn);
     uint64_t RookMoves(int x, int y);
     uint64_t BishopMoves(int x, int y);
-    uint64_t PawnMoves(int x, int y);
+    uint64_t PawnMoves(int x, int y, bool forKing = false);
     void game();
+    uint64_t AttackMask(int PiecesID);
 
     const char Symbols[13] = 
     {'K', 'Q', 'R', 'B', 'N', 'P',

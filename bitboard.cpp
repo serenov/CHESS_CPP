@@ -199,11 +199,10 @@ void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, f
         char CapturedPID = getPieceID(Destination, (Blackturn)? 0: 6);
         board[CapturedPID] &= ~Destination;
         if(CapturedPID % 6 == 2){
-            if(Destination & 0x8100000000000081){
-                if(Castling[(!Blackturn) * 2] & Destination)
-                Castling[!Blackturn * 2] = 0;
-                else if(Castling[(!Blackturn) * 2 + 1] & Destination)
-                Castling[(!Blackturn) * 2 + 1] = 0;
+            if(Destination & 0x8100000000000081UL){
+                if(Castling[!Blackturn * 2] & Destination)Castling[!Blackturn * 2] = 0;
+                else if(Castling[!Blackturn * 2 + 1] & Destination)
+                Castling[!Blackturn * 2 + 1] = 0;
             }
         }
     }
@@ -390,17 +389,24 @@ uint64_t bitboard::BishopMoves(int x, int y){
     bit_display(GeneratedMoves);
     return GeneratedMoves;
 }
-uint64_t bitboard::PawnMoves(int x, int y){
+uint64_t bitboard::PawnMoves(int x, int y, bool forKing){
 
     uint64_t poskey = 1ul << 8 * y + x;
     uint64_t temp = 0;
-
-    int offset = (board[5] & poskey)?  1: -1;
     uint64_t GeneratedMoves = 0;
+    int offset;
+    if(forKing){
+        offset = (board[0] & poskey)? 1: -1;
+        if(NOT_FILE_A & poskey)temp = (offset == -1)? poskey >> 9: poskey << 7;
+        if(NOT_FILE_H & poskey)temp |= (offset == -1)? poskey >> 7: poskey << 9;
+        poskey = (offset == -1)? board[5]: board[11];
+        return poskey & temp;
+    }
+    offset = (board[5] & poskey)?  1: -1;
 
     temp = (offset == -1)? poskey >> 8:poskey << 8;
 
-    if(temp & ~(EntireBoard)){
+    if((temp & ~(EntireBoard)) && !forKing){
         GeneratedMoves |= temp;
         if(RANK_2_7 & poskey){
             GeneratedMoves |= (offset == -1)? temp >> 8: temp << 8;
@@ -411,8 +417,6 @@ uint64_t bitboard::PawnMoves(int x, int y){
     if(NOT_FILE_A & poskey)temp = (offset == -1)? poskey >> 9: poskey << 7;
     if(NOT_FILE_H & poskey)temp |= (offset == -1)? poskey >> 7: poskey << 9;
     poskey = (offset == -1)? white: black;
-    bit_display(temp);
-    bit_display(poskey);
 
     GeneratedMoves |= poskey & temp;
 
@@ -433,13 +437,58 @@ void bitboard::game(){
             WhiteToPlay = !WhiteToPlay;
             DisplayBoard();
         }
-    }   
+    }
+}
 
+uint64_t bitboard::AttackMask(int PiecesID){
+    int position = __builtin_ctzl(board[PiecesID * 6]);
+    uint64_t MaskOfAttack = 0;
+    char checkcount = 3;
+
+    uint64_t GenerateMoves = BishopMoves(position % 8, position / 8);
+
+    if(board[!PiecesID * 6 + 1] & GenerateMoves){
+        int position = __builtin_ctzl(board[!PiecesID + 1]);
+        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    }
+    else if(board[!PiecesID * 6 + 3] & GenerateMoves){
+        int position = __builtin_ctzl(board[!PiecesID + 3]);
+        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    } 
+    else checkcount--;
+
+    GenerateMoves = RookMoves(position % 8, position / 8);
+
+    if(board[!PiecesID * 6 + 1] & GenerateMoves){
+        int position = __builtin_ctzl(board[!PiecesID + 1]);
+        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    }
+    else if(board[!PiecesID * 6 + 2] & GenerateMoves){
+        int position = __builtin_ctzl(board[!PiecesID + 2]);
+        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    } 
+    else checkcount--;
+
+
+    if(checkcount < 2) return 0ul;
+
+    GenerateMoves = KnightMoves[position];
+    if(board[!PiecesID * 6 + 4] & GenerateMoves) 
+        MaskOfAttack = GenerateMoves & board[!PiecesID * 6 + 4];
+    else if ((GenerateMoves = PawnMoves(position % 8, position / 8, true)))
+        MaskOfAttack = GenerateMoves;
+    else checkcount--;
+
+    if(checkcount < 2) return 0ul;
+
+
+    return MaskOfAttack;
 }
 
 
 int main(){
     // bitboard b;
+
     bitboard b("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Qnp/PPPBBPPP/R3K2R w KQkq -");
     b.game();
     return 0;
