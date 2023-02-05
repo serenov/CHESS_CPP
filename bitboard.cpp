@@ -313,7 +313,7 @@ int bitboard::getPieceID(uint64_t pos, char turn){
     for(int i = 0; i < 6; i++) if(board[turn + i] & pos) return turn + i;
     return -1;
 }
-bool bitboard::TheEnd(){
+bool bitboard::Checkmate(){
     return false;
 }
 uint64_t bitboard::RookMoves(int x, int y){
@@ -428,7 +428,7 @@ uint64_t bitboard::PawnMoves(int x, int y, bool forKing){
 void bitboard::game(){
     char Move[5]; // mandatorily sized
     DisplayBoard ();
-    while(!TheEnd()){
+    while(!Checkmate()){
         for(int i = 0; ; i++){
             std::cin.get(Move[i % 5]);
             if(Move[i % 5] == 10) break;

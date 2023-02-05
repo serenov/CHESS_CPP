@@ -24,15 +24,18 @@ private:
 
 
 public:
+    // Constructors...
     bitboard(const char fen[]);
     bitboard();
+
     void LoadFEN(const char fen[]); // Only legal fen strings are allowed. Game glitches otherwise.
+
     void UpdateBoardState();
     uint64_t GenerateMoves(uint64_t pos, char PieceID, int x, int y);
     int getPieceID(uint64_t pos, char turn);
     void MakeMove(char PieceID, uint64_t Position, uint64_t Destination, flag f);
-    bool TheEnd();
-    void DisplayBoard(uint64_t GenerateMoves = 0);  
+    bool Checkmate();
+    void DisplayBoard(uint64_t GenerateMoves = 0);
     bool Interface(const char Move[], bool WhiteTurn);
     uint64_t RookMoves(int x, int y);
     uint64_t BishopMoves(int x, int y);
