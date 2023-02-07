@@ -174,7 +174,7 @@ void bitboard::MakeMove(char PieceID, uint64_t Position, uint64_t Destination, f
         case PromotionToQ:
             PieceID = 1;
             break;
-        
+
         case PromotionToR:
             PieceID = 2;
             break;
@@ -256,7 +256,7 @@ bool bitboard::Interface(const char Move[], bool WhiteTurn){
     }
     int x = Move[0] - 'a';
     int y = Move[1] - '1';
-    
+
     uint64_t PositionMask = 1ul << ((Move[1] - '1') * 8 +  Move[0] - 'a');
     if(WhiteTurn){
         if(PositionMask & ~white){ std:: cout << "\nSelect a white piece.\n"; return false;}
@@ -267,7 +267,7 @@ bool bitboard::Interface(const char Move[], bool WhiteTurn){
     char PieceID = getPieceID(PositionMask, (WhiteTurn)? 0: 6);
     uint64_t GeneratedMoves = GenerateMoves(PositionMask, PieceID, x, y);
     flag f = None;
-    
+
     if(DestinationMask & GeneratedMoves){
         // Legal Move
         if(PieceID == 5 || PieceID == 11){
@@ -377,7 +377,7 @@ uint64_t bitboard::BishopMoves(int x, int y){
         if(EntireBoard & poskey)break;
         poskey <<= 7;
     }
-    bit_display(GeneratedMoves);
+    // bit_display(GeneratedMoves);
 
     poskey = 1ul << (y * 8 + x - 7);
 
@@ -386,7 +386,7 @@ uint64_t bitboard::BishopMoves(int x, int y){
         if(EntireBoard & poskey) break;
         poskey >>= 7;
     }
-    bit_display(GeneratedMoves);
+    // bit_display(GeneratedMoves);
     return GeneratedMoves;
 }
 uint64_t bitboard::PawnMoves(int x, int y, bool forKing){
@@ -435,6 +435,8 @@ void bitboard::game(){
         }
         if(Interface(Move, WhiteToPlay)){
             WhiteToPlay = !WhiteToPlay;
+            std::cout<<"here it is the line of attack\n";
+            bit_display(AttackMask(WhiteToPlay? 0: 1));
             DisplayBoard();
         }
     }
@@ -444,33 +446,34 @@ uint64_t bitboard::AttackMask(int PiecesID){
     int position = __builtin_ctzl(board[PiecesID * 6]);
     uint64_t MaskOfAttack = 0;
     char checkcount = 3;
+    uint64_t temp;
 
     uint64_t GenerateMoves = BishopMoves(position % 8, position / 8);
 
-    if(board[!PiecesID * 6 + 1] & GenerateMoves){
-        int position = __builtin_ctzl(board[!PiecesID + 1]);
-        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    if(temp = (board[!PiecesID * 6 + 1] & GenerateMoves)){
+        int position = __builtin_ctzl(temp);
+        MaskOfAttack = temp | BishopMoves(position % 8, position / 8) & GenerateMoves;
     }
-    else if(board[!PiecesID * 6 + 3] & GenerateMoves){
-        int position = __builtin_ctzl(board[!PiecesID + 3]);
-        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    else if(temp = (board[!PiecesID * 6 + 3] & GenerateMoves)){
+        int position = __builtin_ctzl(temp);
+        MaskOfAttack = temp | BishopMoves(position % 8, position / 8) & GenerateMoves;
     } 
     else checkcount--;
 
     GenerateMoves = RookMoves(position % 8, position / 8);
 
-    if(board[!PiecesID * 6 + 1] & GenerateMoves){
-        int position = __builtin_ctzl(board[!PiecesID + 1]);
-        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    if(temp = (board[!PiecesID * 6 + 1] & GenerateMoves)){
+        int position = __builtin_ctzll(temp);
+        MaskOfAttack = temp | RookMoves(position % 8, position / 8) & GenerateMoves;
     }
-    else if(board[!PiecesID * 6 + 2] & GenerateMoves){
-        int position = __builtin_ctzl(board[!PiecesID + 2]);
-        MaskOfAttack = BishopMoves(position % 8, position / 8);
+    else if(temp = (board[!PiecesID * 6 + 2] & GenerateMoves)){
+        int position = __builtin_ctzl(temp);
+        MaskOfAttack = temp | RookMoves(position % 8, position / 8) & GenerateMoves;
     } 
     else checkcount--;
 
 
-    if(checkcount < 2) return 0ul;
+    if(checkcount > 2) return 0ul;
 
     GenerateMoves = KnightMoves[position];
     if(board[!PiecesID * 6 + 4] & GenerateMoves) 
@@ -479,7 +482,7 @@ uint64_t bitboard::AttackMask(int PiecesID){
         MaskOfAttack = GenerateMoves;
     else checkcount--;
 
-    if(checkcount < 2) return 0ul;
+    if(checkcount > 2) return 0ul;
 
 
     return MaskOfAttack;
@@ -489,7 +492,7 @@ uint64_t bitboard::AttackMask(int PiecesID){
 int main(){
     // bitboard b;
 
-    bitboard b("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Qnp/PPPBBPPP/R3K2R w KQkq -");
+    bitboard b("r3k2r/p1ppqpbQ/bn2pnp1/3PN3/1p2P3/2N2Qnp/PPPBBPPP/R3K2R w KQkq -");
     b.game();
     return 0;
 }
